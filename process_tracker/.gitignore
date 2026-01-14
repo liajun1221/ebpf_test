@@ -1,0 +1,7 @@
+*.o
+*.skel.h
+process_tracker
+vmlinux.h
+.DS_Store
+*.swp
+*.swo
