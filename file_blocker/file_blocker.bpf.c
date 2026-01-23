@@ -77,7 +77,7 @@ int BPF_KRETPROBE(kretprobe_exit, long ret) {
 #define O_APPEND   0x00000400
 #define O_TRUNC    0x00000200
 
-static __always_inline bool is_write_op(int flags)
+__attribute__((always_inline, unused)) static bool is_write_op(int flags)
 {
     int acc = flags & O_ACCMODE;
     if (acc == O_WRONLY || acc == O_RDWR)
@@ -87,14 +87,37 @@ static __always_inline bool is_write_op(int flags)
     return false;
 }
 
-SEC("lsm/file_open")
-int BPF_PROG(file_open, struct file *file)
-{
-    int flags;
-    if(bpf_probe_read_kernel(&flags, sizeof(flags), &file->f_flags))
-        return 0;
+// SEC("lsm/file_open")
+// int BPF_PROG(file_open, struct file *file)
+// {
+//     int flags;
+//     if(bpf_probe_read_kernel(&flags, sizeof(flags), &file->f_flags))
+//         return 0;
 
-    if(!is_write_op(flags))
+//     if(!is_write_op(flags))
+//         return 0;
+
+//     struct inode *inode = BPF_CORE_READ(file, f_inode);
+//     if (!inode) 
+//         return 0;
+
+//     u64 ino = BPF_CORE_READ(inode, i_ino);
+//     if (ino == (u64)TARGET_INODE)
+//     {
+//         bpf_printk("inode:%llu, flags:%d", ino, flags);
+//         return -EPERM;
+//     }
+
+//     return 0;
+// }
+
+#define MAY_WRITE 0x00000002
+#define MAY_APPEND   0x00000008
+
+SEC("lsm/file_permission")
+int BPF_PROG(file_permission, struct file *file, int mask)
+{
+    if (!(mask & (MAY_WRITE | MAY_APPEND)))
         return 0;
 
     struct inode *inode = BPF_CORE_READ(file, f_inode);
@@ -104,7 +127,7 @@ int BPF_PROG(file_open, struct file *file)
     u64 ino = BPF_CORE_READ(inode, i_ino);
     if (ino == (u64)TARGET_INODE)
     {
-        bpf_printk("inode:%llu, flags:%d", ino, flags);
+        bpf_printk("inode:%llu, flags:%d", ino, mask);
         return -EPERM;
     }
 
