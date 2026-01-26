@@ -6,6 +6,14 @@
 #define PROTECTED_FILE "/home/henry/test.txt"
 #define EPERM 1
 
+struct
+{
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __uint(max_entries, 256);
+    __type(key, u64);
+    __type(value, u32);
+} inode_list SEC(".maps");
+
 #if 0
 struct {
     __uint(type, BPF_MAP_TYPE_HASH);
@@ -68,8 +76,6 @@ int BPF_KRETPROBE(kretprobe_exit, long ret) {
 }
 #endif
 
-#define TARGET_INODE 265157
-
 #define O_ACCMODE  0x00000003
 #define O_RDONLY   0x00000000
 #define O_WRONLY   0x00000001
@@ -125,11 +131,14 @@ int BPF_PROG(file_permission, struct file *file, int mask)
         return 0;
 
     u64 ino = BPF_CORE_READ(inode, i_ino);
-    if (ino == (u64)TARGET_INODE)
+    u32 *value = bpf_map_lookup_elem(&inode_list, &ino);
+    if (value)
     {
         bpf_printk("inode:%llu, flags:%d", ino, mask);
         return -EPERM;
     }
+
+    //bpf_map_delete_elem(&inode_list, &ino);
 
     return 0;
 }

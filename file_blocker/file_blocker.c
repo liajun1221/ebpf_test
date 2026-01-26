@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <bpf/libbpf.h>
+#include <bpf/bpf.h>
 #include "file_blocker.skel.h"
 
 static volatile bool exiting = false;
@@ -42,6 +43,17 @@ int main(int argc, char **argv)
     {
         fprintf(stderr, "附加BPF程序失败：%d\n", err);
         goto cleanup;
+    }
+
+    const unsigned long inode_list[] = {265215 , 0};
+    int i = 0;
+    int value = 1;
+    while(inode_list[i] != 0)
+    {
+        err = bpf_map_update_elem(bpf_map__fd(skel->maps.inode_list),
+                                &inode_list[i], &value, BPF_NOEXIST);
+        printf("add inode %lu , ret : %d\n",inode_list[i], err);
+        i++;
     }
 
     while(!exiting)
