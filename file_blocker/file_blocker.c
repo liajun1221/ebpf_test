@@ -6,7 +6,10 @@
 #include <errno.h>
 #include <bpf/libbpf.h>
 #include <bpf/bpf.h>
+#include <sys/stat.h>
 #include "file_blocker.skel.h"
+
+#define PROTECTED_FILE "/home/henry/test.txt"
 
 static volatile bool exiting = false;
 
@@ -45,16 +48,15 @@ int main(int argc, char **argv)
         goto cleanup;
     }
 
-    const unsigned long inode_list[] = {265215 , 0};
-    int i = 0;
+    struct stat st;
+    if(stat(PROTECTED_FILE, &st) !=0)
+        goto cleanup;
+    unsigned long inode = st.st_ino;
+    
     int value = 1;
-    while(inode_list[i] != 0)
-    {
-        err = bpf_map_update_elem(bpf_map__fd(skel->maps.inode_list),
-                                &inode_list[i], &value, BPF_NOEXIST);
-        printf("add inode %lu , ret : %d\n",inode_list[i], err);
-        i++;
-    }
+    err = bpf_map_update_elem(bpf_map__fd(skel->maps.inode_list),
+                                &inode, &value, BPF_NOEXIST);
+    printf("add inode %lu , ret : %d\n",inode, err);
 
     while(!exiting)
     {

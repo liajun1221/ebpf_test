@@ -3,7 +3,6 @@
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
 
-#define PROTECTED_FILE "/home/henry/test.txt"
 #define EPERM 1
 
 struct
@@ -139,6 +138,21 @@ int BPF_PROG(file_permission, struct file *file, int mask)
     }
 
     //bpf_map_delete_elem(&inode_list, &ino);
+
+    return 0;
+}
+
+SEC("lsm/inode_rename")
+int BPF_PROG(file_rename, struct file *old_file, struct dentry *old_dentry,
+             struct file *new_file, struct dentry *new_dentry)
+{
+    u64 old_ino = old_dentry->d_inode->i_ino;
+    u32 *value = bpf_map_lookup_elem(&inode_list, &old_ino);
+    if (value)
+    {
+        bpf_printk("blocked old inode:%llu", old_ino);
+        return -EPERM;
+    }
 
     return 0;
 }
