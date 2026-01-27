@@ -146,7 +146,11 @@ SEC("lsm/inode_rename")
 int BPF_PROG(file_rename, struct file *old_file, struct dentry *old_dentry,
              struct file *new_file, struct dentry *new_dentry)
 {
-    u64 old_ino = old_dentry->d_inode->i_ino;
+    struct inode *old_inode = BPF_CORE_READ(old_dentry, d_inode);
+    if (!old_inode)
+        return 0;
+
+    u64 old_ino = BPF_CORE_READ(old_inode, i_ino);
     u32 *value = bpf_map_lookup_elem(&inode_list, &old_ino);
     if (value)
     {
