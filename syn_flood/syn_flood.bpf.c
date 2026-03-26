@@ -50,7 +50,7 @@ int xdp_syn_flood_protect(struct xdp_md *ctx)
     if (ip->protocol != IPPROTO_TCP)
         return XDP_PASS;
 
-    struct tcphdr *tcp = (struct tcphdr *)(ip + 1);
+    struct tcphdr *tcp = (struct tcphdr *)((char*)ip + ip->ihl * 4);
     if ((void *)(tcp + 1) > data_end)
         return XDP_PASS;
 
